@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cadastro - Mapa Colaborativo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/mobile.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="screen cadastro-screen active">
+        <div class="page">
+            <div class="top-bar">
+                <div class="top"></div>
+                <div class="content">
+                    <div class="title">Criar Conta</div>
+                </div>
+            </div>
+            
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">📝</div>
+                    <h2 class="login-title">Cadastre-se</h2>
+                    <p class="login-subtitle">Preencha seus dados para continuar</p>
+                </div>
+                
+                <div class="login-form">
+                    
+                    <div class="form-group">
+                        <label for="nome">Nome completo</label>
+                        <input type="text" id="nome" name="nome" placeholder="Digite seu nome" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" name="email" placeholder="exemplo@email.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="senha">Senha</label>
+                        <input type="password" id="senha" name="senha" placeholder="Sua senha (mín. 6 dígitos)" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="senha2">Confirmar senha</label>
+                        <input type="password" id="senha2" name="senha2" placeholder="Repita sua senha" required>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="checkArqueologo">
+                        <label for="checkArqueologo" style="cursor: pointer;">Sou Arqueólogo</label>
+                    </div>
+
+                    <div class="form-group" id="groupCodigo" style="display: none; animation: fadeIn 0.3s;">
+                        <label for="codigoAcesso" style="color: var(--primary-color); font-weight: bold;">Código de Acesso</label>
+                        <input type="text" id="codigoAcesso" placeholder="Insira o código da equipe">
+                    </div>
+                    
+                    <button class="login-btn" id="btnCadastrar" onclick="registrar()">
+                        <span>Cadastrar</span>
+                    </button>
+                </div>
+                
+                <div class="login-footer">
+                    <p>Já tem conta? <a href="LoginScreen.html">Entrar</a></p>
+                </div>
+            </div>
+
+            <div class="notification" id="notification"></div>
+        </div>
+    </div>
+
+    <script src="../../js/firebase-config.js"></script>
+
+    <script>
+        const checkArqueologo = document.getElementById('checkArqueologo');
+        const groupCodigo = document.getElementById('groupCodigo');
+        const notification = document.getElementById('notification');
+        const btnCadastrar = document.getElementById('btnCadastrar');
+
+        const ARQUEOLOGO_CODE = "76583"; // Código Secreto
+
+        // Mostra o campo de código apenas se marcar o checkbox
+        checkArqueologo.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                groupCodigo.style.display = 'flex';
+                document.getElementById('codigoAcesso').focus();
+            } else {
+                groupCodigo.style.display = 'none';
+                document.getElementById('codigoAcesso').value = '';
+            }
+        });
+
+        function showNotification(msg, type = 'success') {
+            notification.textContent = msg;
+            notification.style.display = 'block';
+            notification.style.background = type === 'success' ? 'var(--primary-color)' : 'var(--error-color)';
+            setTimeout(() => notification.style.display = 'none', 3000);
+        }
+
+        function registrar() {
+            const nome = document.getElementById("nome").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const senha = document.getElementById("senha").value.trim();
+            const senha2 = document.getElementById("senha2").value.trim();
+            const isArqueologo = checkArqueologo.checked;
+            const codigo = document.getElementById("codigoAcesso").value.trim();
+
+            if (!nome || !email || !senha || !senha2) {
+                showNotification("Preencha todos os campos.", 'error');
+                return;
+            }
+            if (senha !== senha2) {
+                showNotification("As senhas não coincidem.", 'error');
+                return;
+            }
+            if (senha.length < 6) {
+                showNotification("A senha deve ter no mínimo 6 caracteres.", 'error');
+                return;
+            }
+
+            // Validação do Código
+            if (isArqueologo && codigo !== ARQUEOLOGO_CODE) {
+                showNotification("Código de arqueólogo incorreto!", 'error');
+                return;
+            }
+
+            btnCadastrar.disabled = true;
+            btnCadastrar.innerHTML = "<span>Criando conta...</span>";
+
+            // Criação no Firebase
+            auth.createUserWithEmailAndPassword(email, senha)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    const tipoConta = isArqueologo ? 'arqueologo' : 'publico';
+
+                    // Salva os dados do usuário no banco
+                    const userData = {
+                        name: nome,
+                        email: email,
+                        type: tipoConta,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    database.ref('users/' + user.uid).set(userData)
+                        .then(() => {
+                            showNotification("Cadastro realizado com sucesso!");
+                            // Salva backup local
+                            localStorage.setItem('user', JSON.stringify(userData));
+                            setTimeout(() => { window.location.href = "LoginScreen.html"; }, 1500);
+                        });
+                })
+                .catch((error) => {
+                    let msg = error.message;
+                    if (error.code === 'auth/email-already-in-use') msg = "E-mail já cadastrado.";
+                    showNotification("Erro: " + msg, 'error');
+                    btnCadastrar.disabled = false;
+                    btnCadastrar.innerHTML = "<span>Cadastrar</span>";
+                });
+        }
+    </script>
+
+    <style>
+        .login-container {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+        }
+        .login-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        .login-icon { font-size: 48px; margin-bottom: 10px; }
+        .login-title {
+            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin: 0;
+        }
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .form-group input {
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--surface-color);
+            transition: all 0.2s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(125, 27, 28, 0.1);
+        }
+        /* Estilo específico do Checkbox */
+        .checkbox-group {
+            flex-direction: row; 
+            align-items: center; 
+            gap: 12px; 
+            padding: 5px 0;
+        }
+        .checkbox-group input { width: 20px; height: 20px; }
+
+        .login-btn {
+            background: linear-gradient(135deg, var(--primary-color), #9d2c2e);
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(125, 27, 28, 0.4);
+        }
+        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .login-footer { text-align: center; margin-top: 20px; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .login-container { padding: 30px 16px; min-height: 60vh; }
+            .login-title { font-size: 22px; }
+            .login-subtitle { font-size: 15px; }
+        }
+    </style>
+</body>
+</html>

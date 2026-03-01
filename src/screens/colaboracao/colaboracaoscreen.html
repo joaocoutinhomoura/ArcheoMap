@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mapa Colaborativo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/mobile.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="screen main-screen active">
+        <div class="page">
+            <div class="top-bar">
+                <div class="top"></div>
+                <div class="content">
+                    <div class="title">Colaboração (Online)</div>
+                    <div class="icon-buttons">
+                        <div class="icon" id="btnChangeImage" title="Trocar Imagem do Mapa" style="display: none;">🖼️</div>
+                        <div class="icon" id="btnExport" title="Exportar Dados">📤</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="map-container">
+                <div class="image" id="mapArea">
+                    <div class="map-interactive" id="interactiveMap"></div>
+                    <div class="title2" id="mapPlaceholder">Carregando mapa...</div>
+                    <div class="ic-location">📍</div>
+                </div>
+            </div>
+            
+            <div class="list">
+                <div class="section-title">
+                    <div class="text">
+                        <div class="title3">Métricas do Mapa</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="metric">
+                        <div class="title4">Total de Achados</div>
+                        <div class="data" id="totalFindings">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="title5">Ponto Zero</div>
+                        <div class="data" id="zeroPoints">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="title4">Última Atualização</div>
+                        <div class="data" id="lastUpdate">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="list">
+                <div class="section-title">
+                    <div class="text">
+                        <div class="title3">Artefatos Catalogados</div>
+                    </div>
+                </div>
+                <div class="artifacts-grid" id="artifactsGrid">
+                    </div>
+            </div>
+            
+            <div class="bottom-nav">
+                <div class="tab active" id="tabHome">
+                    <div class="icon2">🏠</div>
+                    <div class="title9">Início</div>
+                </div>
+                <div class="tab" id="tabCatalog">
+                    <div class="icon2">📋</div>
+                    <div class="title9">Catálogo</div>
+                </div>
+                <div class="tab" id="tabGaleria" onclick="window.history.back()">
+                    <div class="icon2">🔙</div>
+                    <div class="title9">Voltar</div>
+                </div>
+            </div>
+            
+            <div class="notification" id="notification"></div>
+            
+            <input type="file" id="mapImageInput" accept="image/*" style="display: none;">
+        </div>
+    </div>
+
+    <div class="screen map-detail-screen">
+        <div class="map-detail-header">
+            <button class="back-button" id="backButton">← Voltar</button>
+            <div class="map-detail-title">Mapa Detalhado</div>
+            <div class="header-actions">
+                <button class="header-btn" id="btnAddZeroPoint" title="Adicionar Ponto Zero">⭐</button>
+                <button class="header-btn" id="btnAddCommonPoint" title="Adicionar Achado">💜</button>
+            </div>
+        </div>
+        
+        <div class="detailed-map-container">
+            <div class="coordinate-overlay">
+                <div class="coordinates" id="coordinatesDisplay">X: 0, Y: 0</div>
+                <div class="adding-mode-indicator" id="addingModeIndicator" style="display: none;">
+                    <span id="addingModeText">Modo: Adição</span>
+                    <button class="cancel-add-btn" id="cancelAddMode">✕</button>
+                </div>
+            </div>
+            <canvas id="detailedMapCanvas"></canvas>
+            <div class="map-grid" id="mapGrid"></div>
+            <div class="map-points-container" id="detailedMapPoints"></div>
+        </div>
+        
+        <div class="map-tools">
+            <button class="tool-btn" id="btnGridToggle">🔲 Grade</button>
+        </div>
+    </div>
+
+    <div class="modal point-details-modal" id="pointDetailsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Detalhes do Achado</div>
+                <button class="close-modal" id="closePointDetailsModal">&times;</button>
+            </div>
+            <div class="point-details-content">
+                <div class="detail-section">
+                    <h3>Informações Básicas</h3>
+                    <div class="detail-row">
+                        <label>Nome:</label>
+                        <input type="text" id="pointName" placeholder="Nome do artefato">
+                    </div>
+                    <div class="detail-row">
+                        <label>Descrição:</label>
+                        <textarea id="pointDescription" placeholder="Descrição detalhada"></textarea>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Classificação</h3>
+                    <div class="detail-row">
+                        <label>Categoria:</label>
+                        <select id="pointCategory">
+                            <option value="">Selecione</option>
+                            <option value="ceramica">Cerâmica</option>
+                            <option value="metal">Metal</option>
+                            <option value="ferramentas">Ferramentas</option>
+                            <option value="ossos">Ossos</option>
+                            <option value="adornos">Adornos</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="detail-row">
+                        <label>Época:</label>
+                        <select id="pointEra">
+                            <option value="">Selecione</option>
+                            <option value="pre-historico">Pré-histórico</option>
+                            <option value="colonial">Colonial</option>
+                            <option value="imperial">Imperial</option>
+                            <option value="moderno">Moderno</option>
+                        </select>
+                    </div>
+                    <div class="detail-row">
+                        <label>Estado:</label>
+                        <select id="pointState">
+                            <option value="identificado">Identificado</option>
+                            <option value="analise">Em Análise</option>
+                            <option value="restaurado">Restaurado</option>
+                        </select>
+                    </div>
+                    <div class="detail-row">
+                        <label>Material:</label>
+                        <input type="text" id="pointMaterial" placeholder="Material principal">
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Localização</h3>
+                    <div class="detail-row">
+                        <label>Coordenadas:</label>
+                        <span id="pointCoordinates">X: 0, Y: 0</span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Data da Descoberta:</label>
+                        <input type="date" id="pointDiscoveryDate">
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Tags</h3>
+                    <div class="tags-container" id="pointTags">
+                        <span class="tag" data-value="pesquisado">Pesquisado</span>
+                        <span class="tag" data-value="catalogado">Catalogado</span>
+                        <span class="tag" data-value="importante">Importante</span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="btnDeletePoint" style="border-color: red; color: red;">Excluir</button>
+                    <button class="btn-primary" id="savePointDetails">Salvar (Nuvem)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/firebase-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

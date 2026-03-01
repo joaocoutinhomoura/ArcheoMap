@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Perfil - Mapa Colaborativo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/mobile.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="screen perfil-screen active">
+        <div class="page">
+            <div class="top-bar">
+                <div class="top"></div>
+                <div class="content">
+                    <div class="title">Meu Perfil</div>
+                    <div class="icon-buttons">
+                        <div class="icon" onclick="window.history.back()">←</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="perfil-container">
+                <div class="perfil-header">
+                    <div class="avatar-container">
+                        <div class="avatar" id="userAvatar">U</div>
+                        <div class="avatar-edit" style="display: none;">✎</div>
+                    </div>
+                    
+                    <div class="perfil-info">
+                        <h2 class="user-name" id="userName">Carregando...</h2>
+                        <p class="user-email" id="userEmail">...</p>
+                        <div class="user-badge">
+                            <span id="userType">Verificando...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="perfil-stats" id="perfilStats" style="display: none;">
+                    <div class="stat-card">
+                        <div class="stat-number" id="statMaps">0</div>
+                        <div class="stat-label">Meus Mapas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="statContributions">0</div>
+                        <div class="stat-label">Contribuições</div>
+                    </div>
+                </div>
+                
+                <div class="perfil-actions">
+                    <div class="action-group">
+                        <h3 class="action-title">Conta</h3>
+                        <div class="action-item" onclick="alert('Funcionalidade em desenvolvimento!')">
+                            <div class="action-icon">⚙️</div>
+                            <div class="action-content">
+                                <div class="action-text">Configurações</div>
+                                <div class="action-subtext">Preferências do app</div>
+                            </div>
+                            <div class="action-arrow">›</div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-group">
+                        <h3 class="action-title">Sistema</h3>
+                        <div class="action-item">
+                            <div class="action-icon">ℹ️</div>
+                            <div class="action-content">
+                                <div class="action-text">Sobre o App</div>
+                                <div class="action-subtext">Versão 2.0 (Online)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="logout-section">
+                    <button class="logout-btn" id="btnLogout">
+                        <span>Sair da Conta</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="notification" id="notification"></div>
+        </div>
+    </div>
+
+    <script src="../../js/firebase-config.js"></script>
+
+    <script>
+        // Elementos
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const userType = document.getElementById('userType');
+        const userAvatar = document.getElementById('userAvatar');
+        const perfilStats = document.getElementById('perfilStats');
+        const statMaps = document.getElementById('statMaps');
+        const btnLogout = document.getElementById('btnLogout');
+        const notification = document.getElementById('notification');
+
+        // Monitorar Autenticação
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                carregarDadosDoPerfil(user);
+            } else {
+                window.location.href = '../Login/LoginScreen.html';
+            }
+        });
+
+        function showNotification(msg) {
+            notification.textContent = msg;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
+        }
+
+        function carregarDadosDoPerfil(user) {
+            userEmail.textContent = user.email;
+
+            // Busca detalhes extras no Database
+            database.ref('users/' + user.uid).once('value')
+                .then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        userName.textContent = data.name || 'Usuário';
+                        
+                        // Formata tipo
+                        const tipoFormatado = data.type === 'arqueologo' ? 'Arqueólogo' : 'Visitante';
+                        userType.textContent = tipoFormatado;
+                        
+                        // Cor do badge e avatar
+                        const badge = document.querySelector('.user-badge');
+                        if (data.type === 'arqueologo') {
+                            badge.style.background = 'var(--primary-color)';
+                            userAvatar.style.background = 'var(--primary-color)';
+                            carregarEstatisticas(user.uid);
+                        } else {
+                            badge.style.background = 'var(--success-color)'; // Verde para público
+                            userAvatar.style.background = 'var(--success-color)';
+                            perfilStats.style.display = 'none';
+                        }
+
+                        // Letra do Avatar
+                        userAvatar.innerText = (data.name || 'U').charAt(0).toUpperCase();
+                    }
+                });
+        }
+
+        function carregarEstatisticas(uid) {
+            // Conta quantos mapas esse arqueólogo criou
+            database.ref('maps').orderByChild('authorId').equalTo(uid).once('value')
+                .then((snapshot) => {
+                    const count = snapshot.numChildren();
+                    statMaps.textContent = count;
+                    perfilStats.style.display = 'flex'; // Mostra a caixa de stats
+                });
+        }
+
+        // Função de Logout Real
+        btnLogout.addEventListener('click', () => {
+            if (confirm('Deseja realmente sair?')) {
+                auth.signOut().then(() => {
+                    localStorage.removeItem('user'); // Limpa cache local
+                    window.location.href = '../Login/LoginScreen.html';
+                });
+            }
+        });
+    </script>
+
+    <style>
+        /* Estilos mantidos do original */
+        .perfil-container { padding: 0 16px 80px 16px; }
+        .perfil-header { text-align: center; padding: 30px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; }
+        .avatar-container { position: relative; display: inline-block; margin-bottom: 16px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 600; color: white; margin: 0 auto; }
+        .user-name { color: var(--primary-color); font-size: 20px; font-weight: 600; margin: 0 0 4px 0; }
+        .user-email { color: var(--text-secondary); font-size: 14px; margin: 0 0 12px 0; }
+        .user-badge { display: inline-block; padding: 4px 12px; border-radius: 16px; color: white; font-size: 12px; font-weight: 600; }
+        
+        .perfil-stats { display: flex; justify-content: center; gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px 24px; text-align: center; min-width: 100px; }
+        .stat-number { color: var(--primary-color); font-size: 24px; font-weight: 700; }
+        .stat-label { color: var(--text-secondary); font-size: 12px; }
+
+        .action-group { margin-bottom: 24px; }
+        .action-title { color: var(--text-secondary); font-size: 14px; font-weight: 600; margin-bottom: 12px; padding: 0 12px; }
+        .action-item { display: flex; align-items: center; padding: 16px 12px; background: var(--surface-color); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
+        .action-item:hover { border-color: var(--border-color); background: var(--accent-color); }
+        .action-icon { font-size: 20px; margin-right: 12px; }
+        .action-content { flex: 1; }
+        .action-text { color: var(--text-primary); font-size: 15px; font-weight: 500; }
+        .action-subtext { color: var(--text-muted); font-size: 13px; }
+        
+        .logout-btn { width: 100%; background: transparent; border: 2px solid var(--error-color); border-radius: 8px; padding: 14px; color: var(--error-color); font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .logout-btn:hover { background: var(--error-color); color: white; }
+    </style>
+</body>
+</html>

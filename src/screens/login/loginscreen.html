@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Login - Mapa Colaborativo</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <link rel="stylesheet" href="../../css/mobile.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <div class="screen login-screen active">
+        <div class="page">
+            <div class="top-bar">
+                <div class="top"></div>
+                <div class="content">
+                    <div class="title">Mapa Colaborativo</div>
+                </div>
+            </div>
+            
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="login-icon">🗺️</div>
+                    <h2 class="login-title">Bem-vindo</h2>
+                    <p class="login-subtitle">Acesse sua conta para continuar</p>
+                </div>
+                
+                <form class="login-form" id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" name="password" placeholder="Sua senha" required>
+                        
+                        <div style="text-align: right; margin-top: 8px;">
+                            <a href="#" onclick="recuperarSenha()" style="font-size: 14px; color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                                Esqueci minha senha
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        <span>Entrar</span>
+                    </button>
+                </form>
+                
+                <div class="login-footer">
+                    <p>Não tem conta? <a href="CadastroScreen.html">Cadastre-se</a></p>
+                </div>
+            </div>
+
+            <div class="notification" id="notification"></div>
+        </div>
+    </div>
+
+    <script src="../../js/firebase-config.js"></script>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const notification = document.getElementById('notification');
+
+        function showNotification(msg, type = 'success') {
+            notification.textContent = msg;
+            notification.style.display = 'block';
+            notification.style.background = type === 'success' ? 'var(--primary-color)' : 'var(--error-color)';
+            setTimeout(() => { notification.style.display = 'none'; }, 3000);
+        }
+
+        // Função de Login
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!email || !password) {
+                showNotification('Preencha e-mail e senha.', 'error');
+                return;
+            }
+
+            loginBtn.innerHTML = '<span>Verificando...</span>';
+            loginBtn.disabled = true;
+
+            // Autenticação no Firebase
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Login OK, agora verificamos se é Arqueólogo ou Público
+                    const uid = userCredential.user.uid;
+                    
+                    database.ref('users/' + uid).once('value')
+                        .then((snapshot) => {
+                            const userData = snapshot.val();
+                            
+                            if (userData) {
+                                // Atualiza dados locais e notifica
+                                localStorage.setItem('user', JSON.stringify(userData));
+                                showNotification('Login realizado com sucesso!');
+                                
+                                // Redirecionamento baseado no tipo
+                                setTimeout(() => {
+                                    if (userData.type === 'arqueologo') {
+                                        window.location.href = '../GaleriaArqueologos/GaleriaArqueologosScreen.html';
+                                    } else {
+                                        window.location.href = '../GaleriaPublico/GaleriaPublicoScreen.html';
+                                    }
+                                }, 1000);
+                            } else {
+                                // Caso de erro (usuário sem registro no DB)
+                                showNotification('Erro: Usuário sem perfil cadastrado.', 'error');
+                                loginBtn.disabled = false;
+                                loginBtn.innerHTML = '<span>Entrar</span>';
+                            }
+                        });
+                })
+                .catch((error) => {
+                    console.error(error);
+                    let msg = 'E-mail ou senha incorretos.';
+                    if (error.code === 'auth/user-not-found') msg = 'Usuário não encontrado.';
+                    if (error.code === 'auth/wrong-password') msg = 'Senha incorreta.';
+                    
+                    showNotification(msg, 'error');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<span>Entrar</span>';
+                });
+        }
+
+        // NOVA FUNÇÃO: Recuperar Senha
+        function recuperarSenha() {
+            const email = document.getElementById('email').value.trim();
+            
+            // Valida se o campo de e-mail está preenchido
+            if (!email) {
+                showNotification("Digite seu e-mail no campo acima para recuperar a senha.", "error");
+                document.getElementById('email').focus();
+                return;
+            }
+
+            // Confirmação simples
+            if(!confirm(`Enviar link de redefinição de senha para: ${email}?`)) return;
+
+            // Envia e-mail pelo Firebase
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    showNotification("E-mail enviado! Verifique sua caixa de entrada.");
+                })
+                .catch((error) => {
+                    let msg = error.message;
+                    if (error.code === 'auth/user-not-found') msg = "Este e-mail não está cadastrado.";
+                    if (error.code === 'auth/invalid-email') msg = "Formato de e-mail inválido.";
+                    showNotification("Erro: " + msg, "error");
+                });
+        }
+
+        loginForm.addEventListener('submit', handleLogin);
+    </script>
+
+    <style>
+        .login-container {
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+        }
+        .login-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        .login-icon { font-size: 48px; margin-bottom: 10px; }
+        .login-title {
+            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin: 0;
+        }
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .form-group input {
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--surface-color);
+            transition: all 0.2s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(125, 27, 28, 0.1);
+        }
+        .login-btn {
+            background: linear-gradient(135deg, var(--primary-color), #9d2c2e);
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(125, 27, 28, 0.4);
+        }
+        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .login-footer { text-align: center; margin-top: 20px; }
+
+        @media (max-width: 768px) {
+            .login-container { padding: 30px 16px; min-height: 60vh; }
+            .login-title { font-size: 22px; }
+            .login-subtitle { font-size: 15px; }
+        }
+    </style>
+</body>
+</html>

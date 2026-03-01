@@ -1,0 +1,214 @@
+/* Otimizações para dispositivos móveis */
+@media (max-width: 768px) {
+    .page {
+        padding: 0 0 70px 0;
+        gap: 16px;
+    }
+    
+    .map-container {
+        height: 280px;
+        padding: 0 8px;
+    }
+    
+    .content {
+        padding: 10px 12px;
+    }
+    
+    .title {
+        font-size: 18px;
+    }
+    
+    .list {
+        padding: 0 8px;
+    }
+    
+    .metric {
+        min-width: calc(33.333% - 6px);
+        padding: 10px;
+    }
+    
+    .data {
+        font-size: 18px;
+    }
+    
+    .modal {
+        padding: 10px;
+    }
+    
+    .modal-content {
+        border-radius: 10px;
+        padding: 15px;
+    }
+    
+    .modal-option {
+        padding: 12px;
+        font-size: 15px;
+    }
+    
+    .secondary {
+        top: 320px;
+        right: 8px;
+        padding: 8px 16px;
+    }
+    
+    .primary {
+        bottom: 60px;
+        left: 8px;
+        width: calc(100% - 16px);
+    }
+    
+    .notification {
+        top: 70px;
+        right: 8px;
+        left: 8px;
+        max-width: none;
+    }
+    
+    .point-details-modal .modal-content {
+        margin: 10px;
+        max-height: 85vh;
+    }
+    
+    .detail-row input,
+    .detail-row select,
+    .detail-row textarea {
+        font-size: 16px; /* Prevenir zoom em iOS */
+    }
+    
+    .artifact-photo {
+        height: 100px;
+    }
+    
+    .photo-preview img {
+        max-height: 150px;
+    }
+    
+    input[type="file"] {
+        font-size: 14px;
+    }
+}
+
+/* Tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .page {
+        max-width: 600px;
+    }
+    
+    .map-container {
+        height: 400px;
+    }
+    
+    .metric {
+        min-width: calc(33.333% - 6px);
+    }
+}
+
+/* Telas muito pequenas (smartphones pequenos) */
+@media (max-width: 360px) {
+    .title {
+        font-size: 16px;
+    }
+    
+    .metric {
+        min-width: calc(50% - 4px);
+    }
+    
+    .data {
+        font-size: 16px;
+    }
+    
+    .secondary {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .primary {
+        padding: 8px 12px;
+    }
+    
+    .title11 {
+        font-size: 14px;
+    }
+    
+    .artifact-photo {
+        height: 80px;
+    }
+    
+    .photo-preview img {
+        max-height: 120px;
+    }
+}
+
+/* Prevenir zoom em inputs em iOS */
+@media screen and (max-width: 768px) {
+    input, select, textarea {
+        font-size: 16px;
+    }
+}
+
+/* Melhorias de toque para todos os dispositivos */
+@media (hover: none) and (pointer: coarse) {
+    .map-point::after {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    .icon:active,
+    .tab:active,
+    .modal-option:active,
+    .secondary:active,
+    .primary:active {
+        transition: none;
+    }
+}
+
+/* Suporte para modo escuro */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #5a1414;
+    }
+    
+    .top-bar,
+    .bottom-nav {
+        background: #2d2d2d;
+    }
+    
+    .title,
+    .title3,
+    .title4,
+    .title5,
+    .title7,
+    .title8,
+    .title9,
+    .title10,
+    .title11,
+    .data,
+    .label-text {
+        color: #ffffff;
+    }
+    
+    .metric,
+    .post {
+        background: #3d3d3d;
+        border-color: #555;
+    }
+    
+    .modal-content {
+        background: #2d2d2d;
+        color: white;
+    }
+    
+    .modal-title {
+        color: white;
+    }
+    
+    .modal-option {
+        background: #3d3d3d;
+        border-color: #555;
+        color: white;
+    }
+    
+    .close-modal {
+        color: white;
+    }
+}
